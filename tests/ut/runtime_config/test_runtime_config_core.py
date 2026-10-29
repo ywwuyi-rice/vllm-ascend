@@ -224,7 +224,7 @@ def test_metrics_level_normalizes_and_rejects_unknown():
     from vllm_ascend.observability.runtime_config.config import validate_runtime_config
 
     data = deepcopy(_DEFAULTS)
-    data["metrics"]["level"] = 2
+    data["metrics"]["level"] = 1
     validate_runtime_config(data)
     assert data["metrics"]["level"] == "detail"
 
@@ -242,7 +242,6 @@ def test_metrics_level_normalizes_and_rejects_unknown():
 def test_hot_reload_apply_metric_level(tmp_path: Path):
     from vllm_ascend.observability.ms_metrics.level import (
         METRIC_LEVEL_BASIC,
-        METRIC_LEVEL_DEBUG,
         METRIC_LEVEL_DETAIL,
         get_metric_level,
         set_metric_level,
@@ -267,11 +266,11 @@ def test_hot_reload_apply_metric_level(tmp_path: Path):
         assert cfg.metrics_level() == "detail"
         assert get_metric_level() == METRIC_LEVEL_DETAIL
 
-        _write(cfg_path, {"metrics": {"level": "debug"}})
+        _write(cfg_path, {"metrics": {"level": "basic"}})
         time.sleep(0.01)
         assert cfg.reload(force=True) is True
         cfg.apply_metric_level()
-        assert get_metric_level() == METRIC_LEVEL_DEBUG
+        assert get_metric_level() == METRIC_LEVEL_BASIC
     finally:
         set_metric_level("basic")
 
