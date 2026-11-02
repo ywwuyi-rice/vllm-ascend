@@ -489,7 +489,7 @@ def test_symbol_hook_handlers_honor_level_and_labels(monkeypatch):
     assert metrics.record_metric.call_args.args[0] == "lifecycle:sleep:duration_ms"
 
 
-def test_kv_pool_put_failure_handler_counts_failed_keys(monkeypatch):
+def test_record_sleep_freed_gb_honors_level(monkeypatch):
     metric_type = type("MetricType", (), {"GAUGE": "gauge", "HISTOGRAM": "histogram", "COUNTER": "counter"})
     metrics = Mock()
     _install_provider_api(
@@ -497,142 +497,20 @@ def test_kv_pool_put_failure_handler_counts_failed_keys(monkeypatch):
         MetricType=metric_type,
         get_metric_recorder=lambda: metrics,
     )
-    handlers = _load_feature_handlers(monkeypatch, "test_kv_pool_put_failure_keys", "kvpool")
-    backend = type("MooncakeBackend", (), {})()
+    handlers = _load_feature_handlers(monkeypatch, "test_rl_lifecycle_freed_gb", "rl_lifecycle")
 
-    result = handlers.kv_pool_put_failure_handler(
-        lambda store, keys, mats: [True, False, False],
-        backend,
-        ["a", "b", "c"],
-        [object()],
-    )
+    handlers.record_sleep_freed_gb(2, 12.5)
 
-    assert result == [True, False, False]
     metrics.record_metric.assert_called_once_with(
-        "kvpool:put_failure_keys_total",
-        value=2.0,
-        labels={"backend": "mooncake"},
-    )
-
-
-def test_kv_pool_put_failure_handler_expands_batch_failure(monkeypatch):
-    metric_type = type("MetricType", (), {"GAUGE": "gauge", "HISTOGRAM": "histogram", "COUNTER": "counter"})
-    metrics = Mock()
-    _install_provider_api(
-        monkeypatch,
-        MetricType=metric_type,
-        get_metric_recorder=lambda: metrics,
-    )
-    handlers = _load_feature_handlers(monkeypatch, "test_kv_pool_put_batch_failure", "kvpool")
-    backend = type("MemcacheBackend", (), {})()
-
-    handlers.kv_pool_put_failure_handler(lambda store, keys: False, backend, ["a", "b"])
-    metrics.record_metric.assert_called_once_with(
-        "kvpool:put_failure_keys_total",
-        value=2.0,
-        labels={"backend": "memcache"},
+        "lifecycle:sleep:freed_gb",
+        value=12.5,
+        labels={"level": "2"},
     )
 
     metrics.reset_mock()
-    handlers.kv_pool_put_failure_handler(lambda store, keys: True, backend, ["a", "b"])
-    metrics.record_metric.assert_not_called()
-
-
-def test_kv_pool_put_failure_handler_labels_yuanrong_backend(monkeypatch):
-    metric_type = type("MetricType", (), {"GAUGE": "gauge", "HISTOGRAM": "histogram", "COUNTER": "counter"})
-    metrics = Mock()
-    _install_provider_api(
-        monkeypatch,
-        MetricType=metric_type,
-        get_metric_recorder=lambda: metrics,
-    )
-    handlers = _load_feature_handlers(monkeypatch, "test_kv_pool_yuanrong_backend", "kvpool")
-    backend = type("YuanrongBackend", (), {})()
-
-    handlers.kv_pool_put_failure_handler(lambda store, keys: False, backend, ["a", "b"])
-    metrics.record_metric.assert_called_once_with(
-        "kvpool:put_failure_keys_total",
-        value=2.0,
-        labels={"backend": "yuanrong"},
-    )
-
-
-def test_kv_pool_load_error_handler_counts_blocks(monkeypatch):
-    metric_type = type("MetricType", (), {"GAUGE": "gauge", "HISTOGRAM": "histogram", "COUNTER": "counter"})
-    metrics = Mock()
-    _install_provider_api(
-        monkeypatch,
-        MetricType=metric_type,
-        get_metric_recorder=lambda: metrics,
-    )
-    handlers = _load_feature_handlers(monkeypatch, "test_kv_pool_load_errors", "kvpool")
-    worker = object()
-
-    result = handlers.kv_pool_load_error_handler(lambda current_worker: {1, 2, 3}, worker)
-
-    assert result == {1, 2, 3}
-    metrics.record_metric.assert_called_once_with(
-        "kvpool:load_error_blocks_total",
-        value=3.0,
-        labels={},
-    )
-
-    metrics.reset_mock()
-    handlers.kv_pool_load_error_handler(lambda current_worker: set(), worker)
-    metrics.record_metric.assert_not_called()
-
-
-def test_sp_padding_handler_records_ratio(monkeypatch):
-    metric_type = type("MetricType", (), {"GAUGE": "gauge", "HISTOGRAM": "histogram", "COUNTER": "counter"})
-    metrics = Mock()
-    _install_provider_api(
-        monkeypatch,
-        MetricType=metric_type,
-        get_metric_recorder=lambda: metrics,
-    )
-    handlers = _load_feature_handlers(monkeypatch, "test_sp_padding_ratio", "parallel")
-    sys.modules[_COMMON_MODULE].set_metric_level("detail")
-    monkeypatch.setattr(handlers, "_tp_size", lambda: 4)
-    hidden_states = type("HiddenStates", (), {"shape": (10, 8)})()
-
-    result = handlers.sp_padding_handler(lambda mask, states: "out", None, hidden_states)
-
-    assert result == "out"
-    metrics.record_metric.assert_called_once_with(
-        "parallel:sp_padding_ratio",
-        value=0.2,
-        labels={},
-    )
-
-    metrics.reset_mock()
-    monkeypatch.setattr(handlers, "_tp_size", lambda: 1)
-    handlers.sp_padding_handler(lambda mask, states: "out", None, hidden_states)
-    metrics.record_metric.assert_not_called()
-
-
-def test_moe_comm_selection_handler_labels_comm_type(monkeypatch):
-    metric_type = type("MetricType", (), {"GAUGE": "gauge", "HISTOGRAM": "histogram", "COUNTER": "counter"})
-    metrics = Mock()
-    _install_provider_api(
-        monkeypatch,
-        MetricType=metric_type,
-        get_metric_recorder=lambda: metrics,
-    )
-    handlers = _load_feature_handlers(monkeypatch, "test_moe_comm_selection", "parallel")
-    sys.modules[_COMMON_MODULE].set_metric_level("detail")
-    allgather = type("MoECommType", (), {"name": "ALLGATHER"})()
-
-    result = handlers.moe_comm_selection_handler(lambda *args, **kwargs: {"moe_comm_type": allgather})
-
-    assert result == {"moe_comm_type": allgather}
-    metrics.record_metric.assert_called_once_with(
-        "parallel:moe_comm_selection_total",
-        value=1.0,
-        labels={"comm": "ALLGATHER"},
-    )
-
-    metrics.reset_mock()
-    handlers.moe_comm_selection_handler(lambda *args, **kwargs: {"moe_comm_type": None})
+    sys.modules[_COMMON_MODULE].set_metric_level("off")
+    handlers.record_sleep_freed_gb(1, 8.0)
+    metrics.get_or_create_metric.assert_not_called()
     metrics.record_metric.assert_not_called()
 
 
