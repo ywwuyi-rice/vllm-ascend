@@ -3,8 +3,6 @@
 
 - symbol: vllm_ascend.worker.v2.model_runner:NPUModelRunner.sample_tokens
   handler: vllm_ascend.observability.ms_metrics.handlers:sample_tokens_handler
-- symbol: vllm_ascend.worker.v2.model_runner:NPUModelRunner._update_seq_lens_cpu
-  handler: vllm_ascend.observability.ms_metrics.handlers:seq_lens_update_handler
 
 # schedule() reports preempted request ids and no reason. Capacity preemption
 # and prefix-cache reset share reason=scheduled.
