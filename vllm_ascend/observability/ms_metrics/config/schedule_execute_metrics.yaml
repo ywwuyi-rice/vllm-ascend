@@ -3,10 +3,6 @@
 
 - symbol: vllm_ascend.worker.v2.model_runner:NPUModelRunner.sample_tokens
   handler: vllm_ascend.observability.ms_metrics.handlers:sample_tokens_handler
-
-- symbol: vllm_ascend.worker.v2.aclgraph_utils:ModelAclGraphManager.run_fullgraph
-  handler: vllm_ascend.observability.ms_metrics.handlers:graph_replay_handler
-
 - symbol: vllm_ascend.worker.v2.model_runner:NPUModelRunner._update_seq_lens_cpu
   handler: vllm_ascend.observability.ms_metrics.handlers:seq_lens_update_handler
 
