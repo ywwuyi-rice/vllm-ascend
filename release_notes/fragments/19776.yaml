@@ -7,3 +7,11 @@ entries:
       (off, basic, detail, or debug; default basic). Hot-reload updates the
       level in each process. The default still records the EPLB hotness
       metrics shipped today.
+  - category: feature
+    text: >
+      Add the kvpool:put_failure_keys_total counter so the Ascend store
+      backends report how many keys failed to be written.
+  - category: feature
+    text: >
+      Add the kvpool:load_error_blocks_total counter so KV Pool load failures
+      are reported, and cover the Yuanrong backend in the put failure counter.
